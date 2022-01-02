@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useHistory } from "react-router-dom"
 import { ChatEngine } from "react-chat-engine"
 import { auth } from "firebase"
@@ -9,9 +9,10 @@ export default function Chats() {
   const history = useHistory()
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
+  const didMountRef = useRef(false)
 
   const handleLogout = async () => {
-    await auth.signOut()
+    await auth().signOut()
     history.push('/')
   }
 
@@ -22,37 +23,45 @@ export default function Chats() {
   }
 
   useEffect(() => {
-    if(!user) {
-      history.push('/')
-      return
-    }
-    axios.get('https://api.chatengine.io/users/me', {//get existing user
-      headers: {
-        "project-id": process.env.REACT_APP_CHAT_ENGINE_ID,
-        "user-name": user.email,
-        "user-secret": user.uid
+    if (!didMountRef.current) {
+      didMountRef.current = true
+
+      if (!user || user === null) {
+        history.push("/")
+        return
       }
-    }).then(() => {//get chat for specific user logged in
-      setLoading(false)
-    })
-    .catch(() => {//create chat engine profile for new user
-      let formdata = new FormData()
-      formdata.append('email', user.email)
-      formdata.append('username', user.email)
-      formdata.append('secret', user.uid)
-      getFile(user.photoURL)
-        .then((avatar) => {
+      
+      axios.get(
+        'https://api.chatengine.io/users/me/',
+        { headers: { 
+          "project-id": process.env.REACT_APP_CHAT_ENGINE_ID,
+          "user-name": user.email,
+          "user-secret": user.uid
+        }}
+      )
+      .then(() => setLoading(false))
+      .catch(e => {
+        let formdata = new FormData()
+        formdata.append('email', user.email)
+        formdata.append('username', user.email)
+        formdata.append('secret', user.uid)
+
+        getFile(user.photoURL)
+        .then(avatar => {
           formdata.append('avatar', avatar, avatar.name)
-          axios.post('https://api.chatengine.io/users', formdata, {
-            headers: { "private-key": process.env.REACT_APP_CHAT_ENGINE_KEY }
-          })
-            .then(() => setLoading(false))
-            .catch((err) => console.log(err))
+          axios.post(
+            'https://api.chatengine.io/users/',
+            formdata,
+            { headers: { "private-key": process.env.REACT_APP_CHAT_ENGINE_KEY }}
+          )
+          .then(() => setLoading(false))
+          .catch(e => console.log('e', e.response))
         })
-    })
+      })
+    }
   }, [user, history])
 
-  if (!user || loading) return 'Loading...'
+  if (!user || loading) return <div />
 
   return (
     <div className='chats-page'>

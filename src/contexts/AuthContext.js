@@ -12,18 +12,17 @@ export const AuthProvider = ({ children }) => {
   const history = useHistory()
 
   useEffect(() => {
-    auth.onAuthStateChanged((user) => { //get user data and set it to the user
+    auth.onAuthStateChanged((user) => {
       setUser(user)
       setLoading(false)
-      if (user) history.push('./chats')
+      history.push('/chats')
     })
-  }, [user, history]) //when things in dependency array change, the function is called again
+  }, [user, history])
 
   const value = { user }
 
   return (
     <AuthContext.Provider value={value}>
-      {/* if not loading, then show children */}
       {!loading && children}
     </AuthContext.Provider>
   )
